@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class AI : MonoBehaviour
+public class ki : MonoBehaviour
 {
     public float movementSpeed = 5f; // Geschwindigkeit der Bewegung
     public float directionChangeTime = 10f; // Zeit, nach der die Richtung geändert wird
