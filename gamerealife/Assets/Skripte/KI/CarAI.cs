@@ -2,87 +2,123 @@ using UnityEngine;
 
 public class CarAI : MonoBehaviour
 {
+    public float maxSpeed = 10f;
+    public float accelerationTime = 2f;
+    public float brakeForce = 50f;
+    public float turnSpeed = 5f;
     public Transform[] waypoints;
-    public float speed = 5f;
-    public float brakeDistance = 2f;
-    public float rotationSpeed = 5f;
-    public float inactiveTime = 10f;
+    public LayerMask speedLimitLayers;
+    public GameObject trafficLight;
+    private int currentWaypointIndex = 0;
 
-    private int currentWaypointIndex;
-    private bool isBraking;
-    private bool isInactive;
-    private float inactiveTimer;
+    private Rigidbody rb;
+    private bool braking = false;
+    private float currentSpeed = 0f;
+    private float currentAcceleration = 0f;
+    private Vector3 targetPosition;
+    private Quaternion targetRotation;
 
     private void Start()
     {
-        currentWaypointIndex = 0;
-        isBraking = false;
-        isInactive = false;
-        inactiveTimer = 0f;
+        rb = GetComponent<Rigidbody>();
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        targetPosition = transform.position;
+        targetRotation = transform.rotation;
     }
 
-    private void Update()
+    private void FixedUpdate()
     {
-        if (isInactive)
-        {
-            inactiveTimer += Time.deltaTime;
-            if (inactiveTimer >= inactiveTime)
-            {
-                isInactive = false;
-                inactiveTimer = 0f;
-            }
-            else
-            {
-                return;
-            }
-        }
-
+        // Check if there are waypoints available
         if (waypoints.Length == 0)
-        {
-            Debug.LogError("No waypoints assigned!");
             return;
-        }
 
-        Transform currentWaypoint = waypoints[currentWaypointIndex];
+        // Calculate distance to the current waypoint
+        Vector3 targetDirection = waypoints[currentWaypointIndex].position - transform.position;
+        float distanceToWaypoint = targetDirection.magnitude;
 
-        // Bewegung zur aktuellen Zielposition (Waypoint)
-        Vector3 targetDirection = currentWaypoint.position - transform.position;
-        targetDirection.y = 0f;
-        targetDirection.Normalize();
-
-        if (Vector3.Distance(transform.position, currentWaypoint.position) < brakeDistance)
+        // Move towards the current waypoint
+        if (distanceToWaypoint < 1f && !braking)
         {
-            isBraking = true;
+            // Reached the current waypoint, move to the next one
+            currentWaypointIndex = (currentWaypointIndex + 1) % waypoints.Length;
         }
-        else
+        else if (!braking)
         {
-            isBraking = false;
+            // Rotate towards the target direction
+            targetRotation = Quaternion.LookRotation(targetDirection);
+            transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, turnSpeed * Time.fixedDeltaTime);
+
+            // Accelerate to the maximum speed
+            currentAcceleration += Time.fixedDeltaTime / accelerationTime;
+            currentSpeed = Mathf.Lerp(0f, maxSpeed, currentAcceleration);
+
+            // Apply speed limit based on layers
+            RaycastHit hit;
+            if (Physics.Raycast(transform.position, transform.forward, out hit, Mathf.Infinity, speedLimitLayers))
+            {
+                SpeedLimit speedLimitComponent = hit.transform.GetComponent<SpeedLimit>();
+                if (speedLimitComponent != null)
+                {
+                    currentSpeed = Mathf.Min(currentSpeed, speedLimitComponent.GetSpeedLimit());
+                }
+            }
+
+
+            // Check the state of the traffic light
+            if (trafficLight != null && trafficLight.GetComponent<TrafficLight>().IsRed() && IsInTrigger())
+            {
+                currentSpeed = 0f;
+            }
+
+            rb.velocity = transform.forward * currentSpeed;
         }
-
-        if (!isBraking)
+        else if (braking && !IsInTrigger())
         {
-            // Bewegung vorwärts
-            transform.position += targetDirection * speed * Time.deltaTime;
-
-            // Drehung zur Zielrichtung
-            Quaternion targetRotation = Quaternion.LookRotation(targetDirection);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+            // Resume driving if braking and not in the trigger
+            braking = false;
         }
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Waypoint"))
+        // Check if the triggered object is an obstacle or the traffic light trigger
+        if (other.CompareTag("Obstacle") || other.CompareTag("TrafficLightTrigger"))
         {
-            other.gameObject.SetActive(false);
-            currentWaypointIndex++;
-
-            if (currentWaypointIndex >= waypoints.Length)
-            {
-                currentWaypointIndex = 0;
-            }
-
-            isInactive = true;
+            // Brake if an obstacle or the traffic light trigger enters the trigger
+            rb.velocity = Vector3.zero;
+            currentSpeed = 0f;
+            currentAcceleration = 0f;
+            braking = true;
         }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        // Check if the triggered object is an obstacle or the traffic light trigger
+        if (other.CompareTag("Obstacle") || other.CompareTag("TrafficLightTrigger"))
+        {
+            // Resume driving if an obstacle or the traffic light trigger exits the trigger
+            braking = false;
+        }
+    }
+
+    private bool IsInTrigger()
+    {
+        Collider[] colliders = Physics.OverlapSphere(transform.position, 1f);
+        foreach (Collider collider in colliders)
+        {
+            if (collider.CompareTag("TrafficLightTrigger"))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void Update()
+    {
+        // Update the target position and rotation
+        targetPosition = transform.position + rb.velocity * Time.deltaTime;
+        targetRotation = Quaternion.LookRotation(rb.velocity);
     }
 }
