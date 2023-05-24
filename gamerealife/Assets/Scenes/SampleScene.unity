@@ -2921,6 +2921,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Car
       objectReference: {fileID: 0}
+    - target: {fileID: 2250595578806808228, guid: af0a2f952851f4d4788139b6a3d8ae10, type: 3}
+      propertyPath: m_Constraints
+      value: 32
+      objectReference: {fileID: 0}
     - target: {fileID: 2250595578806808229, guid: af0a2f952851f4d4788139b6a3d8ae10, type: 3}
       propertyPath: trafficLight
       value: 
@@ -3021,6 +3025,14 @@ PrefabInstance:
     - target: {fileID: 2635559132750985304, guid: cf0114a0be14b5a4d92b41ca5915f7bd, type: 3}
       propertyPath: m_Name
       value: Ampel
+      objectReference: {fileID: 0}
+    - target: {fileID: 2635559133641197657, guid: cf0114a0be14b5a4d92b41ca5915f7bd, type: 3}
+      propertyPath: m_Size.x
+      value: 23.684938
+      objectReference: {fileID: 0}
+    - target: {fileID: 2635559133641197657, guid: cf0114a0be14b5a4d92b41ca5915f7bd, type: 3}
+      propertyPath: m_Center.x
+      value: 11.342526
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: cf0114a0be14b5a4d92b41ca5915f7bd, type: 3}
